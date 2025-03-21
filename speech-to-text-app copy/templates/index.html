@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Nepali Speech to Text</title>
+    <style>
+        .progress-bar {
+            width: 100%;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+            display: block;
+            margin-bottom: 20px;
+        }
+        .progress {
+            width: 0;
+            height: 20px;
+            background-color: #4CAF50;
+            text-align: center;
+            color: white;
+            transition: width 0.3s ease;
+        }
+        #transcription {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        #loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        /* Existing styles for upload buttons */
+        .upload-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .file-input-container {
+            margin-bottom: 15px;
+        }
+
+        .custom-file-input {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #2196F3;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .custom-file-input:hover {
+            background: #1976D2;
+            transform: translateY(-1px);
+        }
+
+        .custom-file-input.file-selected {
+            background: #1565C0;
+            border-color: #0D47A1;
+        }
+
+        .transcribe-button {
+            padding: 12px 40px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: visible;
+        }
+
+        .transcribe-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+            transform: none;
+            position: relative;
+        }
+
+        .transcribe-button:disabled:hover::before {
+            content: "Upload a file first";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px;
+            background-color: #333;
+            color: white;
+            border-radius: 4px;
+            font-size: 14px;
+            white-space: nowrap;
+            margin-bottom: 5px;
+            pointer-events: none;
+            opacity: 0;
+            animation: fadeIn 0.3s ease forwards;
+            z-index: 1000;
+        }
+
+        .transcribe-button:disabled:hover::after {
+            content: "";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+            margin-bottom: -5px;
+            opacity: 0;
+            animation: fadeIn 0.3s ease forwards;
+            z-index: 1000;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        .transcribe-button:not(:disabled):hover {
+            background-color: #45a049;
+            transform: translateY(-1px);
+        }
+
+        .transcribe-button:not(:disabled):active {
+            transform: translateY(1px);
+            background-color: #3d8b40;
+        }
+
+        .transcribe-button.clicked {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .transcribe-button.clicked::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes spin {
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        .selected-file {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* New styles for download button */
+        .download-button {
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #FF5722;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 18px;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .download-button:hover {
+            background-color: #F4511E;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transform: translateY(-2px);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Container styling */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        h2 {
+            color: #444;
+            margin-top: 30px;
+        }
+
+        /* New styles for the spinner */
+        .processing-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Hide spinner when complete */
+        .complete .spinner {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nepali Speech to Text Converter</h1>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <p style="color: red;">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form id="upload-form" method="POST" enctype="multipart/form-data">
+            <div class="upload-container">
+                <div class="file-input-container">
+                    <label class="custom-file-input" id="file-input-label">
+                        Choose a File
+                        <input type="file" name="file" accept=".mp3,.m4a" required>
+                    </label>
+                    <div class="selected-file" id="file-name">No file chosen</div>
+                </div>
+                <input type="submit" value="Transcribe" class="transcribe-button" id="transcribe-btn" disabled>
+            </div>
+        </form>
+        <div id="loading">
+            <div class="processing-header">
+                <h3>Processing...</h3>
+                <div class="spinner"></div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress" id="progress-bar">0%</div>
+            </div>
+            <p>Files Processed: <span id="chunks-processed">0</span> / <span id="total-chunks">0</span></p>
+        </div>
+        <div id="transcription-container">
+            <h2>Transcription:</h2>
+            <div id="transcription"></div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource;
+
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            
+            // Reset UI
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('transcription').textContent = '';
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('progress-bar').textContent = '0%';
+            document.getElementById('chunks-processed').textContent = '0';
+            document.getElementById('total-chunks').textContent = '0';
+            
+            // Reset the processing text and spinner
+            const loadingDiv = document.getElementById('loading');
+            loadingDiv.querySelector('.processing-header').classList.remove('complete');
+            loadingDiv.querySelector('h3').textContent = 'Processing...';
+            
+            // Remove existing download button if it exists
+            const existingDownloadBtn = document.getElementById('download-link');
+            if (existingDownloadBtn) {
+                existingDownloadBtn.remove();
+            }
+            
+            // Close existing SSE connection if any
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Upload response:', data);
+                if (data.status === 'success' && data.queue_id) {
+                    connectSSE(data.queue_id);
+                } else {
+                    throw new Error(data.error || 'Upload failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred during upload: ' + error.message);
+                document.getElementById('loading').style.display = 'none';
+            });
+        });
+
+        function connectSSE(queueId) {
+            console.log('Connecting SSE with queue_id:', queueId);  // Debug log
+            
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            eventSource = new EventSource(`/stream?queue_id=${queueId}`);
+            
+            eventSource.onmessage = function(event) {
+                console.log('SSE message received:', event.data);  // Debug log
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'progress') {
+                    updateProgress(data.chunk, data.total);
+                } else if (data.type === 'transcription') {
+                    appendTranscription(data.text);
+                } else if (data.type === 'complete') {
+                    console.log('Processing complete');  // Debug log
+                    eventSource.close();
+                    document.getElementById('loading').style.display = 'none';
+                    if (data.download_link) {
+                        updateDownloadLink(data.download_link);
+                    }
+                } else if (data.type === 'error') {
+                    console.error('Processing error:', data.message);  // Debug log
+                    alert('Error: ' + data.message);
+                    eventSource.close();
+                    document.getElementById('loading').style.display = 'none';
+                }
+            };
+
+            eventSource.onerror = function(error) {
+                console.error('SSE error:', error);  // Debug log
+                eventSource.close();
+                document.getElementById('loading').style.display = 'none';
+                alert('Connection lost. Please try again.');
+            };
+
+            eventSource.onopen = function() {
+                console.log('SSE connection opened');  // Debug log
+            };
+        }
+
+        function updateProgress(current, total) {
+            console.log(`Updating progress: ${current}/${total}`);  // Debug log
+            const progress = (current / total) * 100;
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.width = progress + '%';
+            progressBar.textContent = progress.toFixed(1) + '%';
+            document.getElementById('chunks-processed').textContent = current;
+            document.getElementById('total-chunks').textContent = total;
+        }
+
+        function appendTranscription(text) {
+            console.log('Appending transcription:', text);  // Debug log
+            const transcriptionDiv = document.getElementById('transcription');
+            transcriptionDiv.textContent += text + ' ';
+        }
+
+        function updateDownloadLink(filename) {
+            console.log('Updating download link:', filename);
+            const container = document.getElementById('transcription-container');
+            const existingLink = document.getElementById('download-link');
+            if (existingLink) {
+                existingLink.href = `/download/${filename}`;
+            } else {
+                const newLink = document.createElement('a');
+                newLink.id = 'download-link';
+                newLink.href = `/download/${filename}`;
+                newLink.className = 'download-button';
+                newLink.textContent = '📥 Download Transcription';
+                container.appendChild(newLink);
+            }
+            // Keep the loading div visible but update the text and hide spinner
+            const loadingDiv = document.getElementById('loading');
+            loadingDiv.style.display = 'block';
+            loadingDiv.querySelector('.processing-header').classList.add('complete');
+            loadingDiv.querySelector('h3').textContent = 'Transcription Complete!';
+        }
+
+        // Update file input visual feedback and transcribe button state
+        document.querySelector('input[type="file"]').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+            document.getElementById('file-name').textContent = fileName;
+            
+            // Add selected state to file input button
+            const fileLabel = document.getElementById('file-input-label');
+            const transcribeBtn = document.getElementById('transcribe-btn');
+            
+            if (e.target.files[0]) {
+                fileLabel.classList.add('file-selected');
+                transcribeBtn.disabled = false;  // Enable transcribe button
+            } else {
+                fileLabel.classList.remove('file-selected');
+                transcribeBtn.disabled = true;   // Disable transcribe button
+            }
+        });
+
+        // Add click effect to transcribe button
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            const transcribeBtn = document.getElementById('transcribe-btn');
+            transcribeBtn.classList.add('clicked');
+            
+            // Remove the effect if there's an error
+            const removeEffect = () => transcribeBtn.classList.remove('clicked');
+            setTimeout(() => {
+                if (!eventSource) {
+                    removeEffect();
+                }
+            }, 5000); // Safety timeout
+        });
+
+        // Remove clicked state when processing is complete or on error
+        const originalUpdateDownloadLink = updateDownloadLink;
+        updateDownloadLink = function(filename) {
+            document.getElementById('transcribe-btn').classList.remove('clicked');
+            originalUpdateDownloadLink(filename);
+        };
+
+        const originalEventSourceOnerror = eventSource ? eventSource.onerror : null;
+        if (eventSource) {
+            eventSource.onerror = function(error) {
+                document.getElementById('transcribe-btn').classList.remove('clicked');
+                if (originalEventSourceOnerror) {
+                    originalEventSourceOnerror(error);
+                }
+            };
+        }
+    </script>
+</body>
+</html>
